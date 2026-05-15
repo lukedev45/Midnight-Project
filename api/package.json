@@ -1,0 +1,29 @@
+{
+  "name": "midnight-counter-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@midnight-counter/contract": "workspace:*",
+    "@midnight-ntwrk/compact-js": "^2.5.0",
+    "@midnight-ntwrk/midnight-js-contracts": "^4.0.4",
+    "@midnight-ntwrk/midnight-js-types": "^4.0.4",
+    "@midnight-ntwrk/midnight-js-network-id": "^4.0.4",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "^4.0.4",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "^4.0.4",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "^4.0.4",
+    "@midnight-ntwrk/dapp-connector-api": "^4.0.1",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

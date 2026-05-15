@@ -1,0 +1,20 @@
+{
+  "name": "@midnight-counter/contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/contract/index.js",
+  "types": "dist/contract/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/contract/index.js",
+      "types": "./dist/contract/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "COMPACT_DIRECTORY=~/.compact compact compile -- --skip-zk src/counter.compact dist"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0"
+  }
+}
