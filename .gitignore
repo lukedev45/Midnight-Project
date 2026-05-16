@@ -1,1 +1,24 @@
 node_modules
+.compact/versions/**/artifact.zip
+.compact/versions/**/*.bin
+.compact/versions/**/compactc
+.compact/versions/**/fixup-compact
+.compact/versions/**/format-compact
+.compact/versions/**/zkir
+.compact/versions/**/zkir-v3
+.compact/versions/**/toolchain-*.md
+.compact/bin/
+
+# Build outputs
+packages/*/dist
+packages/*/managed
+packages/contract/src/managed
+
+# Local state
+.deployment.json
+demo/credentials
+.env
+.env.local
+*.log
+.DS_Store
+*.tsbuildinfo

@@ -1,0 +1,14 @@
+{
+  "name": "whistleblower",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.1.2",
+  "scripts": {
+    "build:contract": "pnpm --filter @whistleblower/contract build",
+    "build:api": "pnpm --filter @whistleblower/api build",
+    "dev:ui": "pnpm --filter @whistleblower/ui dev",
+    "dev:scorer": "pnpm --filter @whistleblower/scorer dev",
+    "test": "pnpm -r test"
+  }
+}

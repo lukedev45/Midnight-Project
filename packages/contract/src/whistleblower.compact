@@ -1,0 +1,169 @@
+pragma language_version >= 0.16;
+
+import CompactStandardLibrary;
+
+// ---------------------------------------------------------------------------
+// Anonymous Whistleblower Forum with AI Trust Score
+// ---------------------------------------------------------------------------
+// Members are admitted by the admin via Merkle-tree commitments.  Each member
+// can enroll once (enforced by a one-time-use nullifier) and bind a public
+// pseudonym that they alone control.  Posts are made under that pseudonym and
+// a trust score (0..100) is maintained per pseudonym by an off-chain operator
+// that classifies post content.
+// ---------------------------------------------------------------------------
+
+// ===== Ledger state =========================================================
+
+// Sealed public keys: persistentHash([DOMAIN, secret]) of the admin's and
+// operator's private secrets.  Set once in the constructor.
+export sealed ledger admin_pk: Bytes<32>;
+export sealed ledger operator_pk: Bytes<32>;
+
+// Merkle tree of member-commitment leaves.  Depth 10 = up to 1024 members.
+// Using HistoricMerkleTree so members can prove membership against any past
+// root, not just the current one.
+export ledger members: HistoricMerkleTree<10, Bytes<32>>;
+
+// One-time enrollment nullifiers — prevents double-enrollment by one member.
+export ledger consumed_nullifiers: Set<Bytes<32>>;
+
+// Pseudonyms currently in use — prevents collisions.
+export ledger pseudonyms: Set<Bytes<32>>;
+
+// Trust score per pseudonym, 0..100.
+export ledger score_map: Map<Bytes<32>, Uint<8>>;
+
+// Total number of posts ever made.
+export ledger post_count: Counter;
+
+// ===== Witnesses ============================================================
+
+witness admin_secret(): Bytes<32>;
+witness operator_secret(): Bytes<32>;
+witness pseudonym_secret(): Bytes<32>;
+witness credential_secret(): Bytes<32>;
+witness member_path(leaf: Bytes<32>): MerkleTreePath<10, Bytes<32>>;
+
+// ===== Internal helpers =====================================================
+// Domain-separation constants are inlined inside each hash call below using
+// `pad(32, "...")`.  Top-level `const` is not supported in Compact, and
+// declaring them as ledger fields would make them mutable, so inlining is
+// the simplest correct approach.
+
+circuit hash_admin_pk(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>(
+    [pad(32, "wb:admin:pk:"), sk]
+  );
+}
+
+circuit hash_operator_pk(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>(
+    [pad(32, "wb:operator:pk:"), sk]
+  );
+}
+
+circuit hash_pseudonym(psk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>(
+    [pad(32, "wb:pseudonym:"), psk]
+  );
+}
+
+circuit hash_nullifier(cred: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>(
+    [pad(32, "wb:enroll-null:"), cred]
+  );
+}
+
+circuit hash_member_leaf(cred: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>(
+    [pad(32, "wb:member-leaf:"), cred]
+  );
+}
+
+circuit require_admin(): [] {
+  const derived = hash_admin_pk(admin_secret());
+  assert(disclose(derived) == admin_pk, "not admin");
+}
+
+circuit require_operator(): [] {
+  const derived = hash_operator_pk(operator_secret());
+  assert(disclose(derived) == operator_pk, "not operator");
+}
+
+// ===== Constructor ==========================================================
+// The caller supplies the *already-hashed* admin/operator public keys.  The
+// caller is expected to compute these off-chain as
+//   persistentHash([DOMAIN_ADMIN_PK,    admin_secret])
+//   persistentHash([DOMAIN_OPERATOR_PK, operator_secret])
+// so that no secret material has to flow through the deployment transaction.
+
+constructor(admin_pk_seed: Bytes<32>, operator_pk_seed: Bytes<32>) {
+  admin_pk = disclose(admin_pk_seed);
+  operator_pk = disclose(operator_pk_seed);
+}
+
+// ===== Exported circuits ====================================================
+
+// Admin adds a new member by inserting their credential commitment into the
+// Merkle tree.  The commitment value is publicly disclosed (it is supplied
+// as a circuit argument), but the MerkleTree insert opcode itself hashes the
+// leaf before storage so the on-chain transcript stores only `leaf_hash`.
+export circuit add_member(commitment: Bytes<32>): [] {
+  require_admin();
+  members.insert(disclose(commitment));
+}
+
+// A member enrolls a public pseudonym.  This binds `pseudonym` to the calling
+// member by:
+//   * proving the member's credential is in the Merkle tree
+//   * burning a one-time nullifier so the same credential can't enroll twice
+//   * proving the caller knows the pre-image of `pseudonym`
+export circuit enroll(pseudonym: Bytes<32>): [] {
+  const cred = credential_secret();
+
+  // 1. Membership proof against the historic Merkle root.
+  const leaf = hash_member_leaf(cred);
+  const path = member_path(leaf);
+  const root = merkleTreePathRoot<10, Bytes<32>>(path);
+  assert(members.checkRoot(disclose(root)), "not a member");
+
+  // 2. Burn enrollment nullifier (single-use).
+  const nullifier = disclose(hash_nullifier(cred));
+  assert(!consumed_nullifiers.member(nullifier), "already enrolled");
+  consumed_nullifiers.insert(nullifier);
+
+  // 3. Prove pseudonym ownership.  `pseudonym` is already public (it's a
+  //    circuit argument), so we compare a disclosed `expected` against it
+  //    directly — there's no benefit to disclosing the boolean result.
+  const psk = pseudonym_secret();
+  const expected = hash_pseudonym(psk);
+  assert(disclose(expected) == pseudonym, "pseudonym mismatch");
+
+  // 4. Bind pseudonym and seed its initial trust score at 50/100.
+  assert(!pseudonyms.member(disclose(pseudonym)), "pseudonym in use");
+  pseudonyms.insert(disclose(pseudonym));
+  score_map.insert(disclose(pseudonym), 50 as Uint<8>);
+}
+
+// Post under an enrolled pseudonym.  `content_hash` is disclosed via the
+// argument so the off-chain scorer can index the post by its hash.
+export circuit post(pseudonym: Bytes<32>, content_hash: Bytes<32>): [] {
+  // Prove pseudonym ownership.
+  const psk = pseudonym_secret();
+  const expected = hash_pseudonym(psk);
+  assert(disclose(expected) == pseudonym, "pseudonym ownership");
+
+  // Pseudonym must be enrolled.
+  assert(pseudonyms.member(disclose(pseudonym)), "pseudonym not enrolled");
+
+  // content_hash is implicitly disclosed as a circuit argument.
+  post_count.increment(1);
+}
+
+// Operator updates the trust score for a pseudonym.  Overwrites whatever was
+// there.  `new_score` MUST be in 0..100 — enforced via a runtime assert.
+export circuit update_score(pseudonym: Bytes<32>, new_score: Uint<8>): [] {
+  require_operator();
+  assert(new_score <= 100 as Uint<8>, "score out of range");
+  score_map.insert(disclose(pseudonym), disclose(new_score));
+}
