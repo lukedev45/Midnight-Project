@@ -1,8 +1,0 @@
-packages:
-  - contract
-  - api
-  - ui
-allowBuilds:
-  '@swc/core': true
-  esbuild: true
-  msgpackr-extract: true
