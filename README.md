@@ -91,21 +91,6 @@ Coverage breakdown:
   unknown credentials, rejection of double-enrollment.
 - **`packages/ui`** — 2 smoke tests; the meaningful coverage is in the scorer.
 
-## Demo script (3 minutes)
-
-| Time | What you say | What you click |
-|---|---|---|
-| 0:00 | "Anonymous whistleblowing has a spam problem. We solve it with ZK membership and an AI trust score that follows your pseudonym, not your identity." | Open the running UI. Empty Enroll tab. |
-| 0:20 | "The roster is 15 verified school members. The admin already inserted their commitments into a Compact `HistoricMerkleTree` — that's pattern #16, anonymous Merkle membership." | Click `cred-005`. The Enroll button. |
-| 0:40 | "The browser just generated a 32-byte pseudonym secret with `crypto.getRandomValues`. It never left this tab. The on-chain transcript only sees its hash, plus a one-time-use nullifier so this credential can't enroll twice." | Pseudonym shows. Auto-jump to Compose. |
-| 1:00 | "Let me write a tip with specific markers: dates, dollar amounts, named processes." | Paste a factual post. Click Post. |
-| 1:20 | "The scorer's AI just classified it. We're using a heuristic stub for the demo — same call shape as a real LLM. Notice the score reasons: factual markers, length band. Operator-only circuit means only the scorer can update score; the contract enforces that with a sealed hash-of-secret." | Switch to Feed tab. Score badge is 70. Expand reasons. |
-| 1:40 | "Same user, different post — let me try a vague rant with shouting." | Compose, paste `"OBVIOUSLY EVERYONE KNOWS THIS IS BAD!!!"`, post. |
-| 2:00 | "Score dropped to 35. The pseudonym carries — same anonymous identity, but the reputation is now lower. That's the carrot and stick: stay anonymous, build credibility." | Show updated badge. |
-| 2:20 | "Open another tab — different member, different pseudonym. They share a forum but they're cryptographically unlinkable. The AI signal travels with the pseudonym; the credentials never appear on-chain after enrollment." | Open second window, enroll cred-007, post. |
-| 2:40 | "In production this lives on Midnight: the scorer talks to a deployed contract via `@midnight-ntwrk/midnight-js-contracts`. The CLI in `packages/cli` is wired for that path — `deploy`, `bootstrap-roster`, `enroll-members`, `score`. Today's demo runs the same compiled circuits in-memory so there's no devnet to babysit." | Open `packages/cli/src/commands/`. |
-| 3:00 | End. | — |
-
 ## Design holes (worth saying out loud)
 
 1. **Enrollment timing leak.** The admin who hands out the credentials sees the
