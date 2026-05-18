@@ -1,3 +1,5 @@
+**This project is built on the Midnight Network.**
+
 # Anonymous Whistleblower Forum with AI Trust Score
 
 A Midnight hackathon entry: a forum where a verified member of a closed group
